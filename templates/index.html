@@ -3,29 +3,18 @@
 <title>Appointments</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<link rel="stylesheet" type="text/css"
-     href="//cdn.jsdelivr.net/bootstrap/latest/css/bootstrap.css"
-/>
+<!-- Include Required Prerequisites -->
+<script type="text/javascript" src="//cdn.jsdelivr.net/jquery/1/jquery.min.js"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
 
-<link rel="stylesheet" type="text/css"
- href="/static/js/node_modules/bootstrap-daterangepicker/daterangepicker.css"
-/>
-
-<link rel="stylesheet" type="text/css"
-    href="/static/css/busy.css"
-/>
-
-<!-- jquery from a content distribution network; probably cached -->
-<script type="text/javascript"
-     src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
-</script>
-
-
-<!-- The rest of our javascript dependencies are bundled and -->
-<!-- 'minified' by 'browserify'  -->
-<script type="text/javascript" 
-   src="/static/js/busy.min.js">
-</script>
+<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap/latest/css/bootstrap.css"/>
+<link rel="stylesheet" type="text/css" href="/static/js/node_modules/bootstrap-daterangepicker/daterangepicker.css"/>
+<link rel="stylesheet" type="text/css" href="/static/css/busy.css"/>
+ 
+<!-- Include Date Range Picker -->
+<script type="text/javascript" src="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.js"></script>
+<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.css"/>
 
 </head>
 
@@ -51,14 +40,13 @@
 {% endwith %}
 
 <h2>Date range</h2>
-  <form action="/setrange" method="post">
-  <input type="text" name="daterange" size="12"
+<form action="/setrange" method="post">
+  <input type="text" name="daterange" size="14"
     {% if session.daterange is defined %}
          value="{{session.daterange}}"
     {% endif %}
      class="pull-down"
-     style="background: #fff; cursor: pointer; padding: 5px 10px;
-     border: 1px solid #ccc; width: 12em" >
+     style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc; width: 14em" >
   <script type="text/javascript">
   $(function() {
   $('input[name="daterange"]').daterangepicker(
@@ -76,28 +64,32 @@
     });
   </script>
 
-<br /><input type="submit" value="Choose" />
+<br/><br/><input type="submit" class="btn btn-primary" value="Submit Date" />
 </form>
 
-    <!--
-    Show the calendar list (if we have it).  This will need to be turned into
-    a form from which calendars can be picked. Up to three entries are
-    shown in each row (but the order is across then down; I would
-    prefer down then across). 
-    -->
-{% if session.calendars is defined  %}
-  <div class="row">
-  {% for cal in session.calendars if cal.selected %}
-          <div class="col-md-4">
-	   {{ cal.summary }}
-          </div>
-         {% if loop.index is divisibleby 3 %}
-          </div> <div class="row">
-         {% endif %}
-  {% endfor %}
-  </div>
-{% endif %}
-    
+<!--Show the calendar list (if we have it).  This will need to be turned into a form 
+  from which calendars can be picked. Up to three entries are shown in each row;-->
 
-  </div>  <!-- container (for bootstrap) -->
-  </body> </html>
+<form action="/find_times" method="post">
+  {% if session.calendars is defined  %}
+    <br/><h2>Select desired calanders</h2><br/>
+    <div class="row">
+
+    {% for cal in session.calendars if cal.selected %}
+      <div class="col-md-4">
+        <input type="checkbox" name="calendar" value="{{ cal.summary }}"/>
+        <b>{{ cal.summary }}</b>
+      </div>
+      {% if loop.index is divisibleby 3 %}
+        </div> <div class="row">
+          {% endif %}
+    {% endfor %}
+    <div class="col-md-4">
+        <br/><input type="submit" class="btn btn-primary" value="Find Times">
+      </div>
+    </div>
+  {% endif %}    
+</form>
+
+</div>  <!-- container (for bootstrap) -->
+</body> </html>

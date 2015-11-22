@@ -56,6 +56,7 @@ def choose():
       app.logger.debug("Redirecting to authorization")
       return flask.redirect(flask.url_for('oauth2callback'))
 
+    global gcal_service
     gcal_service = get_gcal_service(credentials)
     app.logger.debug("Returned from get_gcal_service")
     flask.session['calendars'] = list_calendars(gcal_service)
@@ -184,17 +185,23 @@ def setrange():
     widget.
     """
     app.logger.debug("Entering setrange")  
-    flask.flash("Setrange gave us '{}'".format(
-      request.form.get('daterange')))
     daterange = request.form.get('daterange')
     flask.session['daterange'] = daterange
     daterange_parts = daterange.split()
     flask.session['begin_date'] = interpret_date(daterange_parts[0])
     flask.session['end_date'] = interpret_date(daterange_parts[2])
-    app.logger.debug("Setrange parsed {} - {}  dates as {} - {}".format(
-      daterange_parts[0], daterange_parts[1], 
-      flask.session['begin_date'], flask.session['end_date']))
     return flask.redirect(flask.url_for("choose"))
+
+@app.route('/find_times', methods=['POST'])
+def get_cal():
+    """Get the calendar selected"""
+    app.logger.debug("Entering get_cal")
+    checked_cals = request.form.getlist('calendar')
+    all_cals = flask.session['calendars']
+    for cal in all_cals:
+        if cal['summary'] in checked_cals:
+            busy_times(cal)
+    return flask.redirect(flask.url_for("index"))
 
 ####
 #
@@ -264,6 +271,32 @@ def next_day(isotext):
 #  Functions (NOT pages) that return some information
 #
 ####
+
+def busy_times( calendar ):
+    app.logger.debug("Entering busy_times")
+    calendarID = calendar['id']
+
+    freebusy_query = {
+        "timeMin" : flask.session['begin_date'],
+        "timeMax" : flask.session['end_date'],
+        "items" :[
+          {
+            "id" : calendarID
+          }
+        ]
+      }
+
+    queryResult = gcal_service.freebusy().query(body=freebusy_query)
+    busyRecords = queryResult.execute()
+    busyTimes = busyRecords['calendars'][calendarID]['busy']
+
+    for busyTime in busyTimes:
+        utcEndTime = busyTime['end']
+        utcBeginTime = busyTime['start']
+        localEndTime = arrow.get(utcEndTime).to('local').format('ddd MM/DD/YYYY HH:mm')
+        localBeginTime = arrow.get(utcBeginTime).to('local').format('ddd MM/DD/YYYY HH:mm')
+        flask.flash("{}  -  {}".format(localBeginTime,localEndTime))
+
   
 def list_calendars(service):
     """
