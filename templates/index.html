@@ -70,25 +70,47 @@
 <!--Show the calendar list (if we have it).  This will need to be turned into a form 
   from which calendars can be picked. Up to three entries are shown in each row;-->
 
-<form action="/find_times" method="post">
-  {% if session.calendars is defined  %}
-    <br/><h2>Select desired calanders</h2><br/>
-    <div class="row">
+{% if session.calendars is defined  %}
+  <br/><div class="row">
+    <div class="col-md-4">
+      <h2>Select desired calanders</h2>
+    </div>
+    <div class="col-md-2">
+      <br/><button class="btn btn-success" onclick="select()">Select all</button>
+    </div>
+    <div class="col-md-2">
+      <br/><button class="btn btn-danger" onclick="deselect()">Deselect all</button>
+    </div>
+  </div><br/>
 
-    {% for cal in session.calendars if cal.selected %}
-      <div class="col-md-4">
-        <input type="checkbox" name="calendar" value="{{ cal.summary }}"/>
-        <b>{{ cal.summary }}</b>
-      </div>
-      {% if loop.index is divisibleby 3 %}
-        </div> <div class="row">
-          {% endif %}
-    {% endfor %}
+  <script type="text/javascript" >
+    function select() {
+      $('input:checkbox').prop('checked',true);
+    };
+
+    function deselect() {
+      $('input:checkbox').prop('checked',false)
+    }
+  </script>
+
+<form action="/find_times" method="post">
+  <div class="row">
+  {% for cal in session.calendars if cal.selected %}
+    <div class="col-md-4">
+      <input type="checkbox" name="calendar" value="{{ cal.summary }}"/>
+      <b>{{ cal.summary }}</b>
+    </div>
+    {% if loop.index is divisibleby 3 %}
+      </div> <div class="row">
+        {% endif %}
+  {% endfor %}
+  </div> 
+  <div class="row">
     <div class="col-md-4">
         <br/><input type="submit" class="btn btn-primary" value="Find Times">
-      </div>
     </div>
-  {% endif %}    
+  </div>
+{% endif %}   
 </form>
 
 </div>  <!-- container (for bootstrap) -->

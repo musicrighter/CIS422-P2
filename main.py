@@ -193,14 +193,16 @@ def setrange():
     return flask.redirect(flask.url_for("choose"))
 
 @app.route('/find_times', methods=['POST'])
-def get_cal():
+def find_times():
     """Get the calendar selected"""
-    app.logger.debug("Entering get_cal")
+    app.logger.debug("Entering find_times")
     checked_cals = request.form.getlist('calendar')
     all_cals = flask.session['calendars']
+    cal_list = []
     for cal in all_cals:
         if cal['summary'] in checked_cals:
-            busy_times(cal)
+            cal_list.append(cal)
+    busy_times(cal_list)
     return flask.redirect(flask.url_for("index"))
 
 ####
@@ -247,10 +249,7 @@ def interpret_time( text ):
     return as_arrow.isoformat()
 
 def interpret_date( text ):
-    """
-    Convert text of date to ISO format used internally,
-    with the local time zone.
-    """
+    """Convert text of date to ISO format used internally, with local time zone"""
     try:
       as_arrow = arrow.get(text, "MM/DD/YYYY").replace(
           tzinfo=tz.tzlocal())
@@ -258,6 +257,24 @@ def interpret_date( text ):
         flask.flash("Date '{}' didn't fit expected format 12/31/2001")
         raise
     return as_arrow.isoformat()
+
+def local_date( date):
+    """Convert date to local format used internally, with local time zone"""
+    try:
+      as_arrow = arrow.get(date).to('local')
+    except:
+        flask.flash("Date '{}' didn't fit expected format")
+        raise
+    return as_arrow
+
+def format_date( date):
+    """Convert date to ddd MM/DD/YYYY"""
+    try:
+      as_arrow = arrow.get(date).format('ddd MM/DD/YYYY HH:mm')
+    except:
+        flask.flash("Date '{}' didn't fit expected format")
+        raise
+    return as_arrow
 
 def next_day(isotext):
     """
@@ -272,30 +289,40 @@ def next_day(isotext):
 #
 ####
 
-def busy_times( calendar ):
+def busy_times( cal_list ):
     app.logger.debug("Entering busy_times")
-    calendarID = calendar['id']
 
-    freebusy_query = {
-        "timeMin" : flask.session['begin_date'],
-        "timeMax" : flask.session['end_date'],
-        "items" :[
-          {
-            "id" : calendarID
-          }
-        ]
-      }
+    for calendar in cal_list:
+        calendarID = calendar['id']
 
-    queryResult = gcal_service.freebusy().query(body=freebusy_query)
-    busyRecords = queryResult.execute()
-    busyTimes = busyRecords['calendars'][calendarID]['busy']
+        freebusy_query = {
+          "timeMin" : flask.session['begin_date'],
+          "timeMax" : flask.session['end_date'],
+          "items" :[
+            {
+              "id" : calendarID
+            }
+          ]
+        }
+        queryResult = gcal_service.freebusy().query(body=freebusy_query)
+        busyRecords = queryResult.execute()
+        busyTimes = busyRecords['calendars'][calendarID]['busy']
 
-    for busyTime in busyTimes:
-        utcEndTime = busyTime['end']
-        utcBeginTime = busyTime['start']
-        localEndTime = arrow.get(utcEndTime).to('local').format('ddd MM/DD/YYYY HH:mm')
-        localBeginTime = arrow.get(utcBeginTime).to('local').format('ddd MM/DD/YYYY HH:mm')
-        flask.flash("{}  -  {}".format(localBeginTime,localEndTime))
+        for busyTime in busyTimes:
+            localBeginTime = local_date(busyTime['start'])
+            localEndTime = local_date(busyTime['end'])
+
+            finalBeginTime = format_date(localBeginTime)
+            finalEndTime = format_date(localEndTime)
+
+            if localEndTime == localBeginTime:
+              flask.flash("{}".format(finalBeginTime))
+
+            elif arrow.get(localBeginTime).date() == arrow.get(localEndTime).date():
+              flask.flash("{} - {}".format(finalBeginTime,localEndTime.format("HH:mm")))
+
+            else:
+              flask.flash("{} - {}".format(finalBeginTime,finalEndTime))
 
   
 def list_calendars(service):
