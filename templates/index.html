@@ -47,10 +47,11 @@
     {% endif %}
      class="pull-down"
      style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc; width: 14em" >
+
   <script type="text/javascript">
-  $(function() {
-  $('input[name="daterange"]').daterangepicker(
-    {    ranges: {
+    $(function() {
+      $('input[name="daterange"]').daterangepicker(
+        {  ranges: {
            'Today': [moment(), moment()],
            'Tomorrow':[moment().add(1, 'days'),
                        moment().add(1, 'days')], 

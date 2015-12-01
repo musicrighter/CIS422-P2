@@ -291,38 +291,44 @@ def next_day(isotext):
 
 def busy_times( cal_list ):
     app.logger.debug("Entering busy_times")
+    busyList = []
 
     for calendar in cal_list:
         calendarID = calendar['id']
 
         freebusy_query = {
           "timeMin" : flask.session['begin_date'],
-          "timeMax" : flask.session['end_date'],
+          "timeMax" : next_day(flask.session['end_date']),
           "items" :[
             {
               "id" : calendarID
             }
           ]
         }
-        queryResult = gcal_service.freebusy().query(body=freebusy_query)
+        queryResult = gcal_service.freebusy().query(body=freebusy_query)  
         busyRecords = queryResult.execute()
         busyTimes = busyRecords['calendars'][calendarID]['busy']
 
         for busyTime in busyTimes:
-            localBeginTime = local_date(busyTime['start'])
-            localEndTime = local_date(busyTime['end'])
+            busyList.append(busyTime)
 
-            finalBeginTime = format_date(localBeginTime)
-            finalEndTime = format_date(localEndTime)
+    sortedBusyList = sorted(busyList, key=lambda times: local_date(times['start']))
 
-            if localEndTime == localBeginTime:
-              flask.flash("{}".format(finalBeginTime))
+    for busyTime in sortedBusyList:
+        localBeginTime = local_date(busyTime['start'])
+        localEndTime = local_date(busyTime['end'])
 
-            elif arrow.get(localBeginTime).date() == arrow.get(localEndTime).date():
-              flask.flash("{} - {}".format(finalBeginTime,localEndTime.format("HH:mm")))
+        finalBeginTime = format_date(localBeginTime)
+        finalEndTime = format_date(localEndTime)
 
-            else:
-              flask.flash("{} - {}".format(finalBeginTime,finalEndTime))
+        if localEndTime == localBeginTime:
+          flask.flash("{}".format(finalBeginTime))
+
+        elif arrow.get(localBeginTime).date() == arrow.get(localEndTime).date():
+          flask.flash("{} - {}".format(finalBeginTime,localEndTime.format("HH:mm")))
+
+        else:
+          flask.flash("{} - {}".format(finalBeginTime,finalEndTime))
 
   
 def list_calendars(service):
