@@ -194,7 +194,10 @@ def setrange():
 
 @app.route('/find_times', methods=['POST'])
 def find_times():
-    """Get the calendar selected"""
+    """
+    Get the selected calendars from the index page and 
+    call busy_times with the list of calendars
+    """
     app.logger.debug("Entering find_times")
     checked_cals = request.form.getlist('calendar')
     all_cals = flask.session['calendars']
@@ -225,9 +228,10 @@ def init_session_values():
     flask.session["daterange"] = "{} - {}".format(
         tomorrow.format("MM/DD/YYYY"),
         nextweek.format("MM/DD/YYYY"))
-    # Default time span each day, 8 to 5
+    # Default time span each day, 9 to 5
     flask.session["begin_time"] = interpret_time("9am")
     flask.session["end_time"] = interpret_time("5pm")
+
 
 def interpret_time( text ):
     """
@@ -248,6 +252,7 @@ def interpret_time( text ):
         raise
     return as_arrow.isoformat()
 
+
 def interpret_date( text ):
     """Convert text of date to ISO format used internally, with local time zone"""
     try:
@@ -258,7 +263,8 @@ def interpret_date( text ):
         raise
     return as_arrow.isoformat()
 
-def local_date( date):
+
+def local_date(date):
     """Convert date to local format used internally, with local time zone"""
     try:
       as_arrow = arrow.get(date).to('local')
@@ -267,7 +273,8 @@ def local_date( date):
         raise
     return as_arrow
 
-def format_date( date):
+
+def format_date(date):
     """Convert date to ddd MM/DD/YYYY"""
     try:
       as_arrow = arrow.get(date).format('ddd MM/DD/YYYY HH:mm')
@@ -275,6 +282,7 @@ def format_date( date):
         flask.flash("Date '{}' didn't fit expected format")
         raise
     return as_arrow
+
 
 def next_day(isotext):
     """
@@ -289,8 +297,14 @@ def next_day(isotext):
 #
 ####
 
-def busy_times( cal_list ):
+def busy_times(cal_list):
+    """
+    Create a list of times that an account of selected calendars has events 
+    whitch are blocking. Sorted by start time and formated according to 
+    the type of event. Events with the same start and end time are removed.
+    """
     app.logger.debug("Entering busy_times")
+
     busyList = []
 
     for calendar in cal_list:
@@ -310,25 +324,67 @@ def busy_times( cal_list ):
         busyTimes = busyRecords['calendars'][calendarID]['busy']
 
         for busyTime in busyTimes:
-            busyList.append(busyTime)
+            if (busyTime['start'] != busyTime['end']):
+              localStart = local_date(busyTime['start'])
+              localEnd = local_date(busyTime['end'])
+              pair = (localStart, localEnd)
+              busyList.append(pair)
 
-    sortedBusyList = sorted(busyList, key=lambda times: local_date(times['start']))
+    busyWithNights = add_nights(busyList)
+    sortedBusyList = sorted(busyWithNights, key=lambda times: times[0])
+    finalBusyList = combine_overlaps(sortedBusyList)
+    print_times(finalBusyList)
+    
 
-    for busyTime in sortedBusyList:
-        localBeginTime = local_date(busyTime['start'])
-        localEndTime = local_date(busyTime['end'])
+def combine_overlaps(times):
+    """
+    Combine any times that overlap with the next time (because they're already sorted)
+    """
+    app.logger.debug("Entering combine_overlaps")
 
-        finalBeginTime = format_date(localBeginTime)
-        finalEndTime = format_date(localEndTime)
+    for i in range(len(times)-1):
+      if times[i][0] > times[i+1][1]:
+        if times[i][0] < times[i+1][0]:
+          newTuple = (times[i][1], times[i+1][0])
+        else:
+          newTuple = times[i]
 
-        if localEndTime == localBeginTime:
-          flask.flash("{}".format(finalBeginTime))
+        del times[i+1]
+        times[i] = newTuple
+        i = i-1
+    return times
 
-        elif arrow.get(localBeginTime).date() == arrow.get(localEndTime).date():
-          flask.flash("{} - {}".format(finalBeginTime,localEndTime.format("HH:mm")))
+
+def add_nights(times):
+    """
+    Append 5pm - 9am (the next day) as a busy time to the current list
+    """
+    app.logger.debug("Entering add_nights")
+
+    startTime = arrow.get(flask.session['begin_date'])
+    endTime = arrow.get(flask.session['end_date'])
+    days = arrow.Arrow.span_range('day', startTime, endTime)
+    for day in days:
+        busyNightTime = (day[0].replace(hour=17), day[1].replace(days=+1, hour=9, minute=0))
+        times.append(busyNightTime)
+    return times 
+
+
+def print_times(times_list):
+    """
+    Prints the times given by a list in an arrow "ddd MM/DD/YYYY HH:mm" format to the index page.
+    """
+    app.logger.debug("Entering print_times")
+
+    for time in times_list:
+        finalBeginTime = format_date(time[0])
+        finalEndTime = format_date(time[1])
+
+        if arrow.get(time[0]).date() == arrow.get(time[1]).date():
+          flask.flash("{} - {}".format(finalBeginTime, arrow.get(time[1]).format("HH:mm")))
 
         else:
-          flask.flash("{} - {}".format(finalBeginTime,finalEndTime))
+          flask.flash("{} - {}".format(finalBeginTime, finalEndTime))
 
   
 def list_calendars(service):
