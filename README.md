@@ -1,4 +1,4 @@
-# proj6-Gcal
+# proj7-Gcal
 Snarf appointment data from a selection of a user's Google calendars 
 
 ## Link to working project
