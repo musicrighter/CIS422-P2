@@ -299,9 +299,9 @@ def next_day(isotext):
 
 def busy_times(cal_list):
     """
-    Create a list of times that an account of selected calendars has events 
-    whitch are blocking. Sorted by start time and formated according to 
-    the type of event. Events with the same start and end time are removed.
+    Create a list of times from selected calendars of a google account that has 
+    events which are blocking. Sorted by start time and formated according to 
+    the type of event. **EVENTS WITH THE SAME START AND END TIME ARE REMOVED**
     """
     app.logger.debug("Entering busy_times")
 
@@ -312,7 +312,7 @@ def busy_times(cal_list):
 
         freebusy_query = {
           "timeMin" : flask.session['begin_date'],
-          "timeMax" : next_day(flask.session['end_date']),
+          "timeMax" : flask.session['end_date'],
           "items" :[
             {
               "id" : calendarID
@@ -333,8 +333,37 @@ def busy_times(cal_list):
     busyWithNights = add_nights(busyList)
     sortedBusyList = sorted(busyWithNights, key=lambda times: times[0])
     finalBusyList = combine_overlaps(sortedBusyList)
-    print_times(finalBusyList)
+
+    free_times(finalBusyList)
+    return finalBusyList
     
+
+def free_times(busyTimes):
+    """
+    Create a list of times that are free given a list of times that are busy. 
+    """
+    app.logger.debug("Entering free_times")
+
+    freeTimes = []
+    startTime = arrow.get(flask.session['begin_date']).replace(hour=9, minute=0)
+    endTime = arrow.get(flask.session['end_date']).replace(hour=17, minute=0)
+
+    for i in range(len(busyTimes)):
+        if i == 0:
+          if busyTimes[i][0] != busyTimes[i][0].replace(hour=9, minute=0):
+            beforeFirstEvent = (startTime, busyTimes[i][0])
+            freeTimes.append(beforeFirstEvent)
+        elif (i > 0) and (i < (len(busyTimes)-1)):
+          freeTime = (busyTimes[i-1][1], busyTimes[i][0])
+          freeTimes.append(freeTime)
+        else:
+          if busyTimes[i-1][1] != busyTimes[i-1][1].replace(hour=17, minute=0):
+            afterLastEvent = (busyTimes[i-1][1], endTime)
+            freeTimes.append(afterLastEvent)
+
+    print_times(freeTimes)
+    return freeTimes
+
 
 def combine_overlaps(times):
     """
@@ -345,12 +374,12 @@ def combine_overlaps(times):
     for i in range(len(times)-1):
       if times[i][0] > times[i+1][1]:
         if times[i][0] < times[i+1][0]:
-          newTuple = (times[i][1], times[i+1][0])
+          pair = (times[i][1], times[i+1][0])
         else:
-          newTuple = times[i]
+          pair = times[i]
 
         del times[i+1]
-        times[i] = newTuple
+        times[i] = pair
         i = i-1
     return times
 
@@ -385,6 +414,7 @@ def print_times(times_list):
 
         else:
           flask.flash("{} - {}".format(finalBeginTime, finalEndTime))
+    return times_list
 
   
 def list_calendars(service):
