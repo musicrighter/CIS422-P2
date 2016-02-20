@@ -2,16 +2,21 @@ import flask
 from flask import render_template
 from flask import request
 from flask import url_for
+from flask import jsonify
 import uuid
-
+import CONFIG
 import json
 import logging
+
+#Server for handling emails
+import smtplib;
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Date handling 
 import arrow # Replacement for datetime, based on moment.js
 import datetime # But we still need time
 from dateutil import tz  # For interpreting local times
-
 
 # OAuth2  - Google library implementation for convenience
 from oauth2client import client
@@ -20,10 +25,22 @@ import httplib2   # used in oauth2 flow
 # Google API for services 
 from apiclient import discovery
 
+# Mongo database
+from pymongo import MongoClient
+#from bson import ObjectId
+#Establish our mongo database connection
+try: 
+    dbclient = MongoClient(CONFIG.MONGO_URL)
+    db = dbclient.meetings
+    collection = db.times
+
+except:
+    print("Failure opening database.  Is Mongo running? Correct password?")
+    sys.exit(1)
+
 ###
 # Globals
 ###
-import CONFIG
 app = flask.Flask(__name__)
 
 SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
@@ -345,24 +362,43 @@ def free_times(busyTimes):
     app.logger.debug("Entering free_times")
 
     freeTimes = []
-    startTime = arrow.get(flask.session['begin_date']).replace(hour=9, minute=0)
-    endTime = arrow.get(flask.session['end_date']).replace(hour=17, minute=0)
+    startTime = arrow.get(flask.session['begin_date'])
+    endTime = arrow.get(flask.session['end_date'])
 
     for i in range(len(busyTimes)):
         if i == 0:
-          if busyTimes[i][0] != busyTimes[i][0].replace(hour=9, minute=0):
-            beforeFirstEvent = (startTime, busyTimes[i][0])
-            freeTimes.append(beforeFirstEvent)
-        elif (i > 0) and (i < (len(busyTimes)-1)):
-          freeTime = (busyTimes[i-1][1], busyTimes[i][0])
-          freeTimes.append(freeTime)
+            if startTime < startTime.replace(hour=9, minute=0):#If default starttime is before 9am that day
+                startTime = startTime.replace(hour=9, minute=0)#Change the starttime to 9am that day.
+            if busyTimes[i][0] > busyTimes[i][0].replace(hour=17, minute=0):#If the first event's end time is after 5pm
+                correctedTime = busyTimes[i][0].replace(hour=17, minute=0)#Change end time to 5pm
+                beforeFirstEvent = (startTime, correctedTime)
+            else:
+                if startTime != busyTimes[i][0]:
+                    beforeFirstEvent = (startTime, busyTimes[i][0])
+                else:
+                    beforeFirstEvent = "First Event is 9am"
+            if beforeFirstEvent != "First Event is 9am":
+                freeTimes.append(beforeFirstEvent)
+        elif (i > 0) and (i < (len(busyTimes)-1)):#If its the first or last time in the loop
+            if busyTimes[i-1][1].hour == 9:#if the starttime is 9am
+                withOrWithoutAddedTime = busyTimes[i-1][1] #leave as is
+            else:#If not, this means the start time is the end of a busy time. 
+                withOrWithoutAddedTime = busyTimes[i-1][1].replace(minutes=+15)#So we need to add 15 minutes to the start time
+            freeTime = (withOrWithoutAddedTime, busyTimes[i][0])
+            freeTimes.append(freeTime)
         else:
-          if busyTimes[i-1][1] != busyTimes[i-1][1].replace(hour=17, minute=0):
-            afterLastEvent = (busyTimes[i-1][1], endTime)
+            endTime = endTime.replace(hour=17, minute=0)#endtime will by default be midnight, so we change it to 5pm
+            if busyTimes[i-1][1] < busyTimes[i-1][1].replace(hour=9, minute=0):#If the end time of the last busy time ends before 9am
+                correctedTime = unionizedTime[i-1][1].replace(hour=9, minute=0)#Change the end time to 9pm
+                afterLastEvent = (correctedTime, endTime)
+            else:#The end time of the last busy time is after 9am
+                afterLastEvent = (busyTimes[i-1][1], endTime)#Therefore we do not need to add time.
             freeTimes.append(afterLastEvent)
+
 
     print_times(freeTimes)
     return freeTimes
+
 
 
 def combine_overlaps(times):

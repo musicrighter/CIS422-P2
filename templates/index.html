@@ -84,16 +84,6 @@
     </div>
   </div><br/>
 
-  <script type="text/javascript" >
-    function select() {
-      $('input:checkbox').prop('checked',true);
-    };
-
-    function deselect() {
-      $('input:checkbox').prop('checked',false)
-    }
-  </script>
-
 <form action="/find_times" method="post">
   <div class="row">
   {% for cal in session.calendars if cal.selected %}
@@ -114,5 +104,28 @@
 {% endif %}   
 </form>
 
+<button class="btn btn-primary" onclick="sendMail()">Send Email</button>
+
+
 </div>  <!-- container (for bootstrap) -->
+
+<script type="text/javascript" >
+    function select() {
+      $('input:checkbox').prop('checked',true);
+    }
+
+    function deselect() {
+      $('input:checkbox').prop('checked',false);
+    }
+
+    function sendMail() {
+      alert("Generating Mail Form");
+      var link = "mailto:"
+               + "?subject=Meeting Proposal"
+               + "&body=Someone has proposed a meeting. Click the link to respond with your own availability: ix.cs.uoregon.edu";
+
+      window.location.href = link;
+    }
+</script>
+
 </body> </html>
