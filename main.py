@@ -45,7 +45,9 @@ app = flask.Flask(__name__)
 
 SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
 CLIENT_SECRET_FILE = CONFIG.GOOGLE_LICENSE_KEY  ## You'll need this
-APPLICATION_NAME = 'MeetMe class project'
+APPLICATION_NAME = 'CIS 422 Project 2'
+BEGINDATE = ''
+ENDDATE = ''
 
 #############################
 #
@@ -58,15 +60,16 @@ APPLICATION_NAME = 'MeetMe class project'
 def index():
   app.logger.debug("Entering index")
   if 'begin_date' not in flask.session:
+    flask.session['proposer'] = True
+    flask.session['email'] = False
     init_session_values()
+  if 'calendars' in flask.session:
+    flask.session.pop('calendars', None)
   return render_template('index.html')
+
 
 @app.route("/choose")
 def choose():
-    ## We'll need authorization to list calendars 
-    ## I wanted to put what follows into a function, but had
-    ## to pull it back here because the redirect has to be a
-    ## 'return' 
     app.logger.debug("Checking credentials for Google calendar access")
     credentials = valid_credentials()
     if not credentials:
@@ -78,6 +81,23 @@ def choose():
     app.logger.debug("Returned from get_gcal_service")
     flask.session['calendars'] = list_calendars(gcal_service)
     return render_template('index.html')
+
+
+@app.route("/email")
+def email():
+  flask.session['proposer'] = False
+  app.logger.debug("Checking credentials for Google calendar access")
+  credentials = valid_credentials()
+  if not credentials:
+    app.logger.debug("Redirecting to authorization")
+    return flask.redirect(flask.url_for('oauth2callback'))
+
+  global gcal_service
+  gcal_service = get_gcal_service(credentials)
+  app.logger.debug("Returned from get_gcal_service")
+  flask.session['calendars'] = list_calendars(gcal_service)
+  return render_template('index.html')
+
 
 ####
 #
@@ -201,28 +221,37 @@ def setrange():
     User chose a date range with the bootstrap daterange
     widget.
     """
+    global BEGINDATE
+    global ENDDATE
     app.logger.debug("Entering setrange")  
     daterange = request.form.get('daterange')
     flask.session['daterange'] = daterange
     daterange_parts = daterange.split()
     flask.session['begin_date'] = interpret_date(daterange_parts[0])
     flask.session['end_date'] = interpret_date(daterange_parts[2])
+
+    BEGINDATE = flask.session['begin_date']
+    ENDDATE = flask.session['end_date']
+
     return flask.redirect(flask.url_for("choose"))
 
-@app.route('/find_times', methods=['POST'])
-def find_times():
+@app.route('/submit_times', methods=['POST'])
+def submit_times():
     """
     Get the selected calendars from the index page and 
     call busy_times with the list of calendars
     """
-    app.logger.debug("Entering find_times")
+    flask.session['email'] = True
+    app.logger.debug("Entering submit_times")
     checked_cals = request.form.getlist('calendar')
     all_cals = flask.session['calendars']
     cal_list = []
     for cal in all_cals:
         if cal['summary'] in checked_cals:
             cal_list.append(cal)
+    print ('before busy times')
     busy_times(cal_list)
+    print ('after busy times')
     return flask.redirect(flask.url_for("index"))
 
 ####
@@ -320,38 +349,54 @@ def busy_times(cal_list):
     events which are blocking. Sorted by start time and formated according to 
     the type of event. **EVENTS WITH THE SAME START AND END TIME ARE REMOVED**
     """
+    global BEGINDATE
+    global ENDDATE
     app.logger.debug("Entering busy_times")
+    print('in busy times')
 
     busyList = []
 
     for calendar in cal_list:
         calendarID = calendar['id']
-
+        print('before freebusy query')
         freebusy_query = {
-          "timeMin" : flask.session['begin_date'],
-          "timeMax" : flask.session['end_date'],
+          "timeMin" : BEGINDATE,
+          "timeMax" : ENDDATE,
           "items" :[
             {
               "id" : calendarID
             }
           ]
         }
+        print('after freebusy query')
+        credentials = valid_credentials()
+        gcal_service = get_gcal_service(credentials)
         queryResult = gcal_service.freebusy().query(body=freebusy_query)  
         busyRecords = queryResult.execute()
         busyTimes = busyRecords['calendars'][calendarID]['busy']
+        print('before busyTime loop')
 
         for busyTime in busyTimes:
+            print('in busyTime loop')
             if (busyTime['start'] != busyTime['end']):
               localStart = local_date(busyTime['start'])
               localEnd = local_date(busyTime['end'])
               pair = (localStart, localEnd)
               busyList.append(pair)
-
+    print('after busyTime loop')
     busyWithNights = add_nights(busyList)
     sortedBusyList = sorted(busyWithNights, key=lambda times: times[0])
     finalBusyList = combine_overlaps(sortedBusyList)
 
-    free_times(finalBusyList)
+    print('before mongo')
+
+    # record = { "type": "meeting",
+    #            "times": finalBusyList
+    #          }
+    # collection.insert(record)
+
+
+    print('before busy times return')
     return finalBusyList
     
 
@@ -395,8 +440,7 @@ def free_times(busyTimes):
                 afterLastEvent = (busyTimes[i-1][1], endTime)#Therefore we do not need to add time.
             freeTimes.append(afterLastEvent)
 
-
-    print_times(freeTimes)
+    # print_times(freeTimes)
     return freeTimes
 
 
@@ -426,8 +470,8 @@ def add_nights(times):
     """
     app.logger.debug("Entering add_nights")
 
-    startTime = arrow.get(flask.session['begin_date'])
-    endTime = arrow.get(flask.session['end_date'])
+    startTime = arrow.get(BEGINDATE)
+    endTime = arrow.get(ENDDATE)
     days = arrow.Arrow.span_range('day', startTime, endTime)
     for day in days:
         busyNightTime = (day[0].replace(hour=17), day[1].replace(days=+1, hour=9, minute=0))

@@ -21,57 +21,42 @@
 <body>
 <div class="container">
 
-<h1>Free times</h1>
 
-<!--
-  -- If there are any warnings or other messages from a prior action,
-  -- they appear above the rest of the content, just until the next 
-  -- action.
-  -->
+{% if session.proposer == True %}
+  <h2>Date range</h2>
+  <form action="/setrange" method="post">
+    <input type="text" name="daterange" size="14"
+      {% if session.daterange is defined %}
+           value="{{session.daterange}}"
+      {% endif %}
+       class="pull-down"
+       style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc; width: 14em" >
 
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <ul class=flashes>
-    {% for message in messages %}
-      <li>{{ message }}</li>
-    {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
+    <script type="text/javascript">
+      $(function() {
+        $('input[name="daterange"]').daterangepicker(
+          {  ranges: {
+             'Today': [moment(), moment()],
+             'Tomorrow':[moment().add(1, 'days'),
+                         moment().add(1, 'days')], 
+             'This week':[moment(), moment().endOf('week')],
+             'Next week':[moment().add(7, 'days').startOf('week'),
+                          moment().add(7, 'days').endOf('week')],
+             'This month':[moment(), moment().endOf('month')],
+             'Within two weeks':[moment(),moment().add(15, 'days')]
+          }}
+         );
+      });
+    </script>
 
-<h2>Date range</h2>
-<form action="/setrange" method="post">
-  <input type="text" name="daterange" size="14"
-    {% if session.daterange is defined %}
-         value="{{session.daterange}}"
-    {% endif %}
-     class="pull-down"
-     style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc; width: 14em" >
-
-  <script type="text/javascript">
-    $(function() {
-      $('input[name="daterange"]').daterangepicker(
-        {  ranges: {
-           'Today': [moment(), moment()],
-           'Tomorrow':[moment().add(1, 'days'),
-                       moment().add(1, 'days')], 
-           'This week':[moment(), moment().endOf('week')],
-           'Next week':[moment().add(7, 'days').startOf('week'),
-                        moment().add(7, 'days').endOf('week')],
-           'This month':[moment(), moment().endOf('month')],
-           'Within two weeks':[moment(),moment().add(15, 'days')]
-        }}
-       );
-    });
-  </script>
-
-<br/><br/><input type="submit" class="btn btn-primary" value="Submit Date" />
-</form>
+  <br/><br/><input type="submit" class="btn btn-primary" value="Submit Date" />
+  </form>
+{% endif %}     
 
 <!--Show the calendar list (if we have it).  This will need to be turned into a form 
   from which calendars can be picked. Up to three entries are shown in each row;-->
 
-{% if session.calendars is defined  %}
+{% if session.calendars is defined %}
   <br/><div class="row">
     <div class="col-md-4">
       <h2>Select desired calanders</h2>
@@ -84,7 +69,7 @@
     </div>
   </div><br/>
 
-<form action="/find_times" method="post">
+<form action="/submit_times" method="post">
   <div class="row">
   {% for cal in session.calendars if cal.selected %}
     <div class="col-md-4">
@@ -98,13 +83,16 @@
   </div> 
   <div class="row">
     <div class="col-md-4">
-        <br/><input type="submit" class="btn btn-primary" value="Find Times">
+        <br/><input type="submit" class="btn btn-primary" value="Submit Times">
     </div>
   </div>
 {% endif %}   
 </form>
 
-<button class="btn btn-primary" onclick="sendMail()">Send Email</button>
+
+{% if session.email == True %}
+  <button class="btn btn-primary" onclick="sendMail()">Send Email</button>
+{% endif %}
 
 
 </div>  <!-- container (for bootstrap) -->
@@ -119,10 +107,9 @@
     }
 
     function sendMail() {
-      alert("Generating Mail Form");
       var link = "mailto:"
                + "?subject=Meeting Proposal"
-               + "&body=Someone has proposed a meeting. Click the link to respond with your own availability: ix.cs.uoregon.edu";
+               + "&body=Someone has proposed a meeting. Click the link to respond with your own availability: ix.cs.uoregon.edu:5678/email";
 
       window.location.href = link;
     }
