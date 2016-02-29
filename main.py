@@ -8,11 +8,6 @@ import CONFIG
 import json
 import logging
 
-#Server for handling emails
-import smtplib;
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-
 # Date handling 
 import arrow # Replacement for datetime, based on moment.js
 import datetime # But we still need time
@@ -61,7 +56,9 @@ def index():
   app.logger.debug("Entering index")
   if 'begin_date' not in flask.session:
     flask.session['proposer'] = True
+    flask.session['participant'] = False
     flask.session['email'] = False
+    flask.session['running'] = True
     init_session_values()
   if 'calendars' in flask.session:
     flask.session.pop('calendars', None)
@@ -86,6 +83,8 @@ def choose():
 @app.route("/email")
 def email():
   flask.session['proposer'] = False
+  flask.session['participant'] = True
+  flask.session['running'] = True
   app.logger.debug("Checking credentials for Google calendar access")
   credentials = valid_credentials()
   if not credentials:
@@ -233,6 +232,8 @@ def setrange():
     BEGINDATE = flask.session['begin_date']
     ENDDATE = flask.session['end_date']
 
+    flask.session['proposer'] = False
+
     return flask.redirect(flask.url_for("choose"))
 
 @app.route('/submit_times', methods=['POST'])
@@ -242,6 +243,7 @@ def submit_times():
     call busy_times with the list of calendars
     """
     flask.session['email'] = True
+    flask.session['running'] = False
     app.logger.debug("Entering submit_times")
     checked_cals = request.form.getlist('calendar')
     all_cals = flask.session['calendars']
@@ -249,9 +251,7 @@ def submit_times():
     for cal in all_cals:
         if cal['summary'] in checked_cals:
             cal_list.append(cal)
-    print ('before busy times')
     busy_times(cal_list)
-    print ('after busy times')
     return flask.redirect(flask.url_for("index"))
 
 ####
@@ -352,13 +352,11 @@ def busy_times(cal_list):
     global BEGINDATE
     global ENDDATE
     app.logger.debug("Entering busy_times")
-    print('in busy times')
 
     busyList = []
 
     for calendar in cal_list:
         calendarID = calendar['id']
-        print('before freebusy query')
         freebusy_query = {
           "timeMin" : BEGINDATE,
           "timeMax" : ENDDATE,
@@ -368,22 +366,18 @@ def busy_times(cal_list):
             }
           ]
         }
-        print('after freebusy query')
         credentials = valid_credentials()
         gcal_service = get_gcal_service(credentials)
         queryResult = gcal_service.freebusy().query(body=freebusy_query)  
         busyRecords = queryResult.execute()
         busyTimes = busyRecords['calendars'][calendarID]['busy']
-        print('before busyTime loop')
 
         for busyTime in busyTimes:
-            print('in busyTime loop')
             if (busyTime['start'] != busyTime['end']):
               localStart = local_date(busyTime['start'])
               localEnd = local_date(busyTime['end'])
               pair = (localStart, localEnd)
               busyList.append(pair)
-    print('after busyTime loop')
     busyWithNights = add_nights(busyList)
     sortedBusyList = sorted(busyWithNights, key=lambda times: times[0])
     finalBusyList = combine_overlaps(sortedBusyList)

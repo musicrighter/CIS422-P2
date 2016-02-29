@@ -57,7 +57,7 @@
   from which calendars can be picked. Up to three entries are shown in each row;-->
 
 {% if session.calendars is defined %}
-  <br/><div class="row">
+  <div class="row">
     <div class="col-md-4">
       <h2>Select desired calanders</h2>
     </div>
@@ -90,10 +90,13 @@
 </form>
 
 
-{% if session.email == True %}
+{% if session.email == True and session.participant == False %}
   <button class="btn btn-primary" onclick="sendMail()">Send Email</button>
 {% endif %}
 
+{% if session.participant == True and session.running == False %}
+  <h2>Times have been added to the scheduler</h2>
+{% endif %}
 
 </div>  <!-- container (for bootstrap) -->
 
