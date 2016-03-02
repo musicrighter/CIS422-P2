@@ -11,6 +11,7 @@
 <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap/latest/css/bootstrap.css"/>
 <link rel="stylesheet" type="text/css" href="/static/js/node_modules/bootstrap-daterangepicker/daterangepicker.css"/>
 <link rel="stylesheet" type="text/css" href="/static/css/busy.css"/>
+<link rel="stylesheet" type="text/css" href="/static/css/pagestyle.css"/>
  
 <!-- Include Date Range Picker -->
 <script type="text/javascript" src="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.js"></script>
@@ -91,8 +92,10 @@
 
 
 {% if session.email == True and session.participant == False %}
-  <h2>Your times have been added to the scheduler</h2>
-  <button class="btn btn-primary" onclick="sendMail()">Send Email</button>
+  <div style="text-align:center; margin:auto;">
+    <h2>Your times have been added to the scheduler</h2>
+    <button class="btn btn-primary" onclick="sendMail()">Send Email</button>
+  </div>
 {% endif %}
 
 {% if session.participant == True and session.running == False %}

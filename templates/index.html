@@ -8,25 +8,23 @@
 <script type="text/javascript" src="//cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
 
-<link rel="stylesheet" type="text/css" href="../static/css/bootstrap.css"/>
-<link rel="stylesheet" type="text/css" href="../static/css/busy.css"/>
-<link rel="stylesheet" type="text/css" href="../static/css/bootstrap.min.css">
+<link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.css">
+<link rel="stylesheet" type="text/css" href="../static/css/busy.css">
+<link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
 <link rel="stylesheet" type="text/css" href="../static/css/welcome.css">
 
 </head>
 <body> 
-
-		<h1>Hello</h1>
+	<h1>Meeting Scheduler</h1>
 	<div class="container">
-		<p style="outline-color:white;"> Go ahead and propose a meeting, or complete an exisiting proposal </p>
-		<form autocomplete="on">
-				<input placeholder="Please enter ID..." style="height:30px;" size="80%" type="text" name="ID">
+		<p style="outline-color:white;"> Propose a new meeting or complete an exisiting proposal </p>
+		<form>
+				<input type="text" placeholder="Please enter 4 digit ID" style="height:40px;" size="25%" name="ID">
 		</form>
 	</div>
-			<button class="button button1 btn-lg" onclick="location.href='/mainpage';">New proposal</button>
-			<button class="button button2" onclick="location.href='/finalize';">Open existing proposal</button>
+  <div style="text-align:center; margin:auto;">
+			<button class="button button1 btn-lg" onclick="location.href='/mainpage';">Create new proposal</button>
+			<button class="button button2 btn-lg" onclick="location.href='/finalize';">Open existing proposal</button>
 	</div>
 </body>
-
-
 </html>
