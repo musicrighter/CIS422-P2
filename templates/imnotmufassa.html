@@ -1,0 +1,166 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html lang="en"> <head>
+<title>Appointments</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Include Required Prerequisites -->
+<script type="text/javascript" src="//cdn.jsdelivr.net/jquery/1/jquery.min.js"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap/latest/css/bootstrap.css"/>
+<link rel="stylesheet" type="text/css" href="../static/js/node_modules/bootstrap-daterangepicker/daterangepicker.css"/>
+<link rel="stylesheet" type="text/css" href="../static/css/busy.css"/>
+<link rel="stylesheet" type="text/css" href="../static/css/bootstrap.min.css">
+<link rel="stylesheet" type="text/css" href="../static/css/pagestyle.css">
+<!-- Include Date Range Picker -->
+<script type="text/javascript" src="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.js"></script>
+<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.css"/>
+
+
+
+
+
+</head>
+<div class="row">
+  <p class="col-md-4" style="font-size:26px;color:white;"> MeetingScheduler.com </p>
+  <a class="col-md-6" href="http://localtimes.info/North_America/United_States/Oregon/Eugene/" style="text-decoration: none; font-size: 10px; color: rgb(0, 0, 0);"></a>
+
+  <script type="text/javascript" src="http://localtimes.info/clock.php?continent=North America&country=United States&province=Oregon&city=Eugene&cp1_Hex=000000&cp2_Hex=FFFFFF&cp3_Hex=000000&fwdt=200&ham=0&hbg=0&hfg=0&sid=0&mon=0&wek=0&wkf=0&sep=0&widget_number=1000">
+  </script>
+</div>
+</div>
+
+  <nav class="navbar navbar-inverse">
+    <div class="container-fluid">
+      <div class="navbar-header">
+        <!--<a class="navbar-brand" href="#">WebSiteName</a> -->
+        <!-- <img width="200px" height="150px" class="navbar-brand" src="meetingscheduler.png"> --> 
+      </div>
+      <ul class="nav navbar-nav">
+        <li><a style="color:white;" href="index.html">Home</a></li>
+        <li><a style="color:white;" href="#">Contact us</a></li>
+      </ul>
+    </div>
+  </nav>
+
+
+<body style="background-color:#808080;">
+
+<div class="container">
+    <!--<img width="100%" height="400px" src="meeting-strangers.jpg">  -->
+    <div class="container" style="background:default;margin-top:25px;" width="100%">
+    <div class="container" style="background:default;font-family:verdana;margin-left:-36px;" width="40px">
+    <p>1. Pick a date range to propose.</p>
+    <p>2. Click submit date, the browser will take you to import your Google calender.</p>
+    <p>3. Once you import your Google calender and check for free time</p>
+    <p>4. You can send a proposal email to suggest meeting time.</p>
+    </div>
+
+<!--
+  -- If there are any warnings or other messages from a prior action,
+  -- they appear above the rest of the content, just until the next 
+  -- action.
+  -->
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
+<h2 style="color:white;font-family:Geneva;text-decoration:underline;">Date range</h2>
+<form action="/setrange" method="post">
+  <input type="text" name="daterange" size="14"
+    {% if session.daterange is defined %}
+         value="{{session.daterange}}"
+    {% endif %}
+     class="pull-down"
+     style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc; width: 14em" >
+
+  <script type="text/javascript">
+    $(function() {
+      $('input[name="daterange"]').daterangepicker(
+        {  ranges: {
+           'Today': [moment(), moment()],
+           'Tomorrow':[moment().add(1, 'days'),
+                       moment().add(1, 'days')], 
+           'This week':[moment(), moment().endOf('week')],
+           'Next week':[moment().add(7, 'days').startOf('week'),
+                        moment().add(7, 'days').endOf('week')],
+           'This month':[moment(), moment().endOf('month')],
+           'Within two weeks':[moment(),moment().add(15, 'days')]
+        }}
+       );
+    });
+  </script>
+
+<br/><br/><input type="submit" class="btn btn-success btn-md" value="Submit Date" />
+</form>
+
+<!--Show the calendar list (if we have it).  This will need to be turned into a form 
+  from which calendars can be picked. Up to three entries are shown in each row;-->
+
+{% if session.calendars is defined  %}
+  <br/><div class="row">
+    <div class="col-md-4">
+      <h2>Select desired calanders</h2>
+    </div>
+    <div class="col-md-2">
+      <br/><button class="btn btn-success" onclick="select()">Select all</button>
+    </div>
+    <div class="col-md-2">
+      <br/><button class="btn btn-danger" onclick="deselect()">Deselect all</button>
+    </div>
+  </div><br/>
+
+<form action="/find_times" method="post">
+  <div class="row">
+  {% for cal in session.calendars if cal.selected %}
+    <div class="col-md-4">
+      <input type="checkbox" name="calendar" value="{{ cal.summary }}"/>
+      <b>{{ cal.summary }}</b>
+    </div>
+    {% if loop.index is divisibleby 3 %}
+      </div> <div class="row">
+        {% endif %}
+  {% endfor %}
+  </div> 
+  <div class="row">
+    <div class="col-md-4">
+        <br/><input type="submit" class="btn btn-primary" value="Find Times">
+    </div>
+  </div>
+{% endif %}   
+</form>
+
+<button class="btn btn-primary btn-md" onclick="sendMail()">Send Email</button>
+</div>
+
+</div>  <!-- container (for bootstrap) -->
+
+<script type="text/javascript" >
+    function select() {
+      $('input:checkbox').prop('checked',true);
+    }
+
+    function deselect() {
+      $('input:checkbox').prop('checked',false);
+    }
+
+    function sendMail() {
+      alert("Generating Mail Form");
+      var link = "mailto:"
+               + "?subject=Meeting Proposal"
+               + "&body=Someone has proposed a meeting. Click the link to respond with your own availability: ix.cs.uoregon.edu";
+
+      window.location.href = link;
+    }
+
+</script>
+
+</body> </html>

@@ -27,7 +27,7 @@ from pymongo import MongoClient
 try: 
     dbclient = MongoClient(CONFIG.MONGO_URL)
     db = dbclient.meetings
-    collection = db.times
+    collection = db.meetings
 
 except:
     print("Failure opening database.  Is Mongo running? Correct password?")
@@ -54,6 +54,11 @@ ENDDATE = ''
 @app.route("/index")
 def index():
   app.logger.debug("Entering index")
+  return render_template('index.html')
+
+@app.route("/mainpage")
+def mainpage():
+  app.logger.debug("Entering mainpage")
   if 'begin_date' not in flask.session:
     flask.session['proposer'] = True
     flask.session['participant'] = False
@@ -62,8 +67,7 @@ def index():
     init_session_values()
   if 'calendars' in flask.session:
     flask.session.pop('calendars', None)
-  return render_template('index.html')
-
+  return render_template('mainpage.html')
 
 @app.route("/choose")
 def choose():
@@ -77,7 +81,7 @@ def choose():
     gcal_service = get_gcal_service(credentials)
     app.logger.debug("Returned from get_gcal_service")
     flask.session['calendars'] = list_calendars(gcal_service)
-    return render_template('index.html')
+    return render_template('mainpage.html')
 
 
 @app.route("/email")
@@ -95,7 +99,7 @@ def email():
   gcal_service = get_gcal_service(credentials)
   app.logger.debug("Returned from get_gcal_service")
   flask.session['calendars'] = list_calendars(gcal_service)
-  return render_template('index.html')
+  return render_template('mainpage.html')
 
 
 ####
@@ -239,7 +243,7 @@ def setrange():
 @app.route('/submit_times', methods=['POST'])
 def submit_times():
     """
-    Get the selected calendars from the index page and 
+    Get the selected calendars from the mainpage page and 
     call busy_times with the list of calendars
     """
     flask.session['email'] = True
@@ -252,7 +256,7 @@ def submit_times():
         if cal['summary'] in checked_cals:
             cal_list.append(cal)
     busy_times(cal_list)
-    return flask.redirect(flask.url_for("index"))
+    return flask.redirect(flask.url_for("mainpage"))
 
 ####
 #
@@ -382,15 +386,13 @@ def busy_times(cal_list):
     sortedBusyList = sorted(busyWithNights, key=lambda times: times[0])
     finalBusyList = combine_overlaps(sortedBusyList)
 
-    print('before mongo')
-
     # record = { "type": "meeting",
-    #            "times": finalBusyList
+    #            "start": "BEGINDATE",
+    #            "end": "ENDDATE",
+    #            "times": "finalBusyList"
     #          }
     # collection.insert(record)
 
-
-    print('before busy times return')
     return finalBusyList
     
 
@@ -475,7 +477,7 @@ def add_nights(times):
 
 def print_times(times_list):
     """
-    Prints the times given by a list in an arrow "ddd MM/DD/YYYY HH:mm" format to the index page.
+    Prints the times given by a list in an arrow "ddd MM/DD/YYYY HH:mm" format to the mainpage page.
     """
     app.logger.debug("Entering print_times")
 

@@ -1,0 +1,119 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html lang="en"> <head>
+<title>Appointments</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Include Required Prerequisites -->
+<script type="text/javascript" src="//cdn.jsdelivr.net/jquery/1/jquery.min.js"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap/latest/css/bootstrap.css"/>
+<link rel="stylesheet" type="text/css" href="/static/js/node_modules/bootstrap-daterangepicker/daterangepicker.css"/>
+<link rel="stylesheet" type="text/css" href="/static/css/busy.css"/>
+ 
+<!-- Include Date Range Picker -->
+<script type="text/javascript" src="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.js"></script>
+<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.css"/>
+
+</head>
+
+<body>
+<div class="container">
+
+
+{% if session.proposer == True %}
+  <h2>Date range</h2>
+  <form action="/setrange" method="post">
+    <input type="text" name="daterange" size="14"
+      {% if session.daterange is defined %}
+           value="{{session.daterange}}"
+      {% endif %}
+       class="pull-down"
+       style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc; width: 14em" >
+
+    <script type="text/javascript">
+      $(function() {
+        $('input[name="daterange"]').daterangepicker(
+          {  ranges: {
+             'Today': [moment(), moment()],
+             'Tomorrow':[moment().add(1, 'days'),
+                         moment().add(1, 'days')], 
+             'This week':[moment(), moment().endOf('week')],
+             'Next week':[moment().add(7, 'days').startOf('week'),
+                          moment().add(7, 'days').endOf('week')],
+             'This month':[moment(), moment().endOf('month')],
+             'Within two weeks':[moment(),moment().add(15, 'days')]
+          }}
+         );
+      });
+    </script>
+
+  <br/><br/><input type="submit" class="btn btn-primary" value="Submit Date" />
+  </form>
+{% endif %}     
+
+<!--Show the calendar list (if we have it).  This will need to be turned into a form 
+  from which calendars can be picked. Up to three entries are shown in each row;-->
+
+{% if session.calendars is defined %}
+  <div class="row">
+    <div class="col-md-4">
+      <h2>Select desired calanders</h2>
+    </div>
+    <div class="col-md-2">
+      <br/><button class="btn btn-success" onclick="select()">Select all</button>
+    </div>
+    <div class="col-md-2">
+      <br/><button class="btn btn-danger" onclick="deselect()">Deselect all</button>
+    </div>
+  </div><br/>
+
+<form action="/submit_times" method="post">
+  <div class="row">
+  {% for cal in session.calendars if cal.selected %}
+    <div class="col-md-4">
+      <input type="checkbox" name="calendar" value="{{ cal.summary }}"/>
+      <b>{{ cal.summary }}</b>
+    </div>
+    {% if loop.index is divisibleby 3 %}
+      </div> <div class="row">
+        {% endif %}
+  {% endfor %}
+  </div> 
+  <div class="row">
+    <div class="col-md-4">
+        <br/><input type="submit" class="btn btn-primary" value="Submit Times">
+    </div>
+  </div>
+{% endif %}   
+</form>
+
+
+{% if session.email == True and session.participant == False %}
+  <h2>Your times have been added to the scheduler</h2>
+  <button class="btn btn-primary" onclick="sendMail()">Send Email</button>
+{% endif %}
+
+{% if session.participant == True and session.running == False %}
+  <h2>Times have been added to the scheduler</h2>
+{% endif %}
+
+</div>  <!-- container (for bootstrap) -->
+
+<script type="text/javascript" >
+    function select() {
+      $('input:checkbox').prop('checked',true);
+    }
+    function deselect() {
+      $('input:checkbox').prop('checked',false);
+    }
+    function sendMail() {
+      var link = "mailto:"
+               + "?subject=Meeting Proposal"
+               + "&body=Someone has proposed a meeting. Click the link to respond with your own availability: ix.cs.uoregon.edu:5678/email";
+      window.location.href = link;
+    }
+</script>
+
+</body> </html>
