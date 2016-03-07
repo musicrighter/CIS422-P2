@@ -1,6 +1,7 @@
 body { 
 		background-image: url("http://ix.cs.uoregon.edu/~djg/mroom.jpg");
 		background-size: 100%;
+		background-repeat: no-repeat;
 }
 
 h1 {
@@ -12,11 +13,6 @@ h1 {
 		margin-bottom: 10px;
 }
 
-form {
-		text-align: center;
-		font-size: 15px;
-}
-
 p    {
 		font-size: 15px;
 		font-family: Verdana;
@@ -25,6 +21,17 @@ p    {
 		text-align: center;
 		margin-top: 0px;
 		outline: 2px 2px white;
+}
+
+.idinput {
+		text-align: center;
+		font-size: 15px;
+}
+
+.idError {
+		text-align: center;
+		margin: 10px 10px;
+		font-size: 15px;
 }
 
 .button1 { 
@@ -60,18 +67,22 @@ p    {
 }
 
 .button2:hover {
-	background-color: white;
-	color: #339966;
+	    background-color: white;
+	    color: #339966;
 }
 
+.section {
+		position: relative;
+		top: 70%;
+		transform: translateY(-50%);
+}
 
 .container {
 		background: rgba(0,0,0,0.5);
 		color: #fff;
-		height: 100px;
+		height: 25%;
 		width: 100%;
-		padding-top: 10px;
+		padding-top: 20px;
 		padding-bottom: 65px;
 		opacity: .9;
-
 }

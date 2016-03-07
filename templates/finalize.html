@@ -1,0 +1,53 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html lang="en"> <head>
+<title>Appointments</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Include Required Prerequisites -->
+<script type="text/javascript" src="//cdn.jsdelivr.net/jquery/1/jquery.min.js"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap/latest/css/bootstrap.css"/>
+<link rel="stylesheet" type="text/css" href="/static/js/node_modules/bootstrap-daterangepicker/daterangepicker.css"/>
+<link rel="stylesheet" type="text/css" href="/static/css/busy.css"/>
+<link rel="stylesheet" type="text/css" href="/static/css/pagestyle.css"/>
+ 
+</head>
+
+<div>
+  <nav class="navbar navbar-inverse">
+    <a href="/index"><img src="http://ix.cs.uoregon.edu/~djg/logo.png" width="10%"/></a>
+  </nav>
+</div>
+
+<body>
+<div class="container">
+
+<form action="/findMeeting" method="post">
+  <div class="row">
+    <p>Find all available time intervals shared between the proposer and participants</p>
+    <input type="submit" class="btn btn-primary" style="text-align:center; margin:auto;" value="Find Meeting">
+  </div>
+</form>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <h1>Free times</h1>
+    <form action="">
+    {% for message in messages %}
+      <input type="radio" name="free" value="{{loop.index}}"> {{ message }}<br>
+    {% endfor %}
+    </form>
+  {% endif %}
+{% endwith %}
+
+<form action="/delete" method="post">
+  <div class="row">
+    </br><p>Please delete the meeting when finished with the propsal</p>
+    <input type="submit" class="btn btn-primary" style="text-align:center; margin:auto;" value="Delete Meeting">
+  </div>
+</form>
+
+</div>
+</body> </html>

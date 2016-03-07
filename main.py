@@ -41,8 +41,6 @@ app = flask.Flask(__name__)
 SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
 CLIENT_SECRET_FILE = CONFIG.GOOGLE_LICENSE_KEY  ## You'll need this
 APPLICATION_NAME = 'CIS 422 Project 2'
-BEGINDATE = ''
-ENDDATE = ''
 
 #############################
 #
@@ -50,24 +48,73 @@ ENDDATE = ''
 #
 #############################
 
-@app.route("/")
-@app.route("/index")
+@app.route("/", methods=['GET', 'POST'])
+@app.route("/index", methods=['GET', 'POST'])
 def index():
-  app.logger.debug("Entering index")
-  return render_template('index.html')
+    app.logger.debug("Entering index")
+    flask.session.pop('begin_date', None)
+    return render_template('index.html')
+
 
 @app.route("/mainpage")
 def mainpage():
-  app.logger.debug("Entering mainpage")
-  if 'begin_date' not in flask.session:
-    flask.session['proposer'] = True
-    flask.session['participant'] = False
-    flask.session['email'] = False
-    flask.session['running'] = True
-    init_session_values()
-  if 'calendars' in flask.session:
-    flask.session.pop('calendars', None)
-  return render_template('mainpage.html')
+    app.logger.debug("Entering mainpage")
+    flask.session['meetingID'] = request.args.get('ID')
+
+    queryResult = collection.find({ "meetingID":flask.session['meetingID'] }) 
+    if queryResult.count() != 0:
+        flask.session['already'] = True
+        return render_template('error.html')
+
+    if 'begin_date' not in flask.session:
+        flask.session['proposer'] = True
+        flask.session['participant'] = False
+        flask.session['email'] = False
+        flask.session['running'] = True
+        init_session_values()
+
+    if 'calendars' in flask.session:
+        flask.session.pop('calendars', None)
+
+    return render_template('mainpage.html')
+
+
+@app.route("/finalize")
+def finalize():
+    app.logger.debug("Entering finalize")
+    flask.session['meetingID'] = request.args.get('ID')
+
+    queryResult = collection.find({ "meetingID":flask.session['meetingID'] }) 
+    if queryResult.count() == 0:
+        flask.session['already'] = False
+        return render_template('error.html')
+
+    return render_template('finalize.html')
+
+
+@app.route('/findMeeting', methods=['POST'])
+def find_meeting():
+    queryResult = collection.find({ "meetingID":flask.session['meetingID'] }) 
+    busyTimes = []
+    if queryResult.count() != 0:
+        start = queryResult[0]['begin']
+        end = queryResult[0]['end']
+        for document in queryResult:
+            if document['type'] == "busyTime":
+                entry = (arrow.get(document['begin']).to('local'), arrow.get(document['end']).to('local'))
+                busyTimes.append(entry) 
+        free_times(busyTimes, start, end)
+    else:
+        flask.seesion['errorMessage'] = "Error: Invalid ID" 
+    return render_template('finalize.html')
+
+
+@app.route('/delete', methods=['POST'])
+def delete():
+    app.logger.debug("Entering delete")
+    collection.remove({ "meetingID":flask.session['meetingID'] })
+    return flask.redirect(flask.url_for('index'))
+
 
 @app.route("/choose")
 def choose():
@@ -86,7 +133,9 @@ def choose():
 
 @app.route("/email")
 def email():
+  flask.session['meetingID'] = request.args.get('ID')
   flask.session['proposer'] = False
+  flask.session['email'] = False
   flask.session['participant'] = True
   flask.session['running'] = True
   app.logger.debug("Checking credentials for Google calendar access")
@@ -141,11 +190,9 @@ def valid_credentials():
     if 'credentials' not in flask.session:
       return None
 
-    credentials = client.OAuth2Credentials.from_json(
-        flask.session['credentials'])
+    credentials = client.OAuth2Credentials.from_json( flask.session['credentials'] )
 
-    if (credentials.invalid or
-        credentials.access_token_expired):
+    if (credentials.invalid or credentials.access_token_expired):
       return None
     return credentials
 
@@ -224,19 +271,20 @@ def setrange():
     User chose a date range with the bootstrap daterange
     widget.
     """
-    global BEGINDATE
-    global ENDDATE
     app.logger.debug("Entering setrange")  
     daterange = request.form.get('daterange')
     flask.session['daterange'] = daterange
     daterange_parts = daterange.split()
     flask.session['begin_date'] = interpret_date(daterange_parts[0])
     flask.session['end_date'] = interpret_date(daterange_parts[2])
-
-    BEGINDATE = flask.session['begin_date']
-    ENDDATE = flask.session['end_date']
-
     flask.session['proposer'] = False
+
+    record = { "type": "daterange", 
+               "begin": flask.session['begin_date'],
+               "end": flask.session['end_date'],
+               "meetingID": flask.session['meetingID']
+             }
+    collection.insert(record)
 
     return flask.redirect(flask.url_for("choose"))
 
@@ -248,6 +296,7 @@ def submit_times():
     """
     flask.session['email'] = True
     flask.session['running'] = False
+
     app.logger.debug("Entering submit_times")
     checked_cals = request.form.getlist('calendar')
     all_cals = flask.session['calendars']
@@ -255,8 +304,11 @@ def submit_times():
     for cal in all_cals:
         if cal['summary'] in checked_cals:
             cal_list.append(cal)
+
     busy_times(cal_list)
-    return flask.redirect(flask.url_for("mainpage"))
+    meetingID = flask.session['meetingID']
+
+    return render_template('mainpage.html', ID=meetingID)
 
 ####
 #
@@ -353,17 +405,23 @@ def busy_times(cal_list):
     events which are blocking. Sorted by start time and formated according to 
     the type of event. **EVENTS WITH THE SAME START AND END TIME ARE REMOVED**
     """
-    global BEGINDATE
-    global ENDDATE
     app.logger.debug("Entering busy_times")
 
+    result = collection.find({ "type":"daterange", "meetingID":flask.session['meetingID'] })[0]
+    ID = flask.session['meetingID']
+    begin_date = result['begin']
+    end_date = result['end']
+
     busyList = []
+
+    if begin_date == end_date: 
+        end_date = arrow.get(end_date).replace(days=+1).isoformat()
 
     for calendar in cal_list:
         calendarID = calendar['id']
         freebusy_query = {
-          "timeMin" : BEGINDATE,
-          "timeMax" : ENDDATE,
+          "timeMin" : begin_date,
+          "timeMax" : end_date,
           "items" :[
             {
               "id" : calendarID
@@ -372,107 +430,101 @@ def busy_times(cal_list):
         }
         credentials = valid_credentials()
         gcal_service = get_gcal_service(credentials)
+
+        # people_resource = gcal_service.people()
+        # people_document = people_resource.get(userId='me').execute()
+        # name = people_document['id']
+
         queryResult = gcal_service.freebusy().query(body=freebusy_query)  
         busyRecords = queryResult.execute()
         busyTimes = busyRecords['calendars'][calendarID]['busy']
 
-        for busyTime in busyTimes:
-            if (busyTime['start'] != busyTime['end']):
-              localStart = local_date(busyTime['start'])
-              localEnd = local_date(busyTime['end'])
-              pair = (localStart, localEnd)
-              busyList.append(pair)
-    busyWithNights = add_nights(busyList)
-    sortedBusyList = sorted(busyWithNights, key=lambda times: times[0])
-    finalBusyList = combine_overlaps(sortedBusyList)
-
-    # record = { "type": "meeting",
-    #            "start": "BEGINDATE",
-    #            "end": "ENDDATE",
-    #            "times": "finalBusyList"
-    #          }
-    # collection.insert(record)
-
-    return finalBusyList
+        if busyTimes:
+            for pair in busyTimes:
+                start = pair['start']
+                end = pair['end']
+                times = {
+                "type": "busyTime",
+                "begin": start,
+                "end": end,
+                "meetingID": ID
+                }
+                collection.insert(times)
+    return
     
 
-def free_times(busyTimes):
-    """
-    Create a list of times that are free given a list of times that are busy. 
-    """
-    app.logger.debug("Entering free_times")
-
+def free_times(busyTimes, startTime, endTime):
     freeTimes = []
-    startTime = arrow.get(flask.session['begin_date'])
-    endTime = arrow.get(flask.session['end_date'])
-
-    for i in range(len(busyTimes)):
+    startTime = arrow.get(startTime)
+    endTime = arrow.get(endTime)
+    allBusyTimes = addNights(busyTimes, startTime, endTime) # add busy times for each day 9pm - 5am
+    sortedTimes = sorted(allBusyTimes, key=lambda times: times[0]) #put them in chronological order
+    unionizedTimes = fix_overlaps(sortedTimes) #get rid of overlapping times
+    for i in range(len(unionizedTimes)):
         if i == 0:
             if startTime < startTime.replace(hour=9, minute=0):#If default starttime is before 9am that day
                 startTime = startTime.replace(hour=9, minute=0)#Change the starttime to 9am that day.
-            if busyTimes[i][0] > busyTimes[i][0].replace(hour=17, minute=0):#If the first event's end time is after 5pm
-                correctedTime = busyTimes[i][0].replace(hour=17, minute=0)#Change end time to 5pm
+            if unionizedTimes[i][0] > unionizedTimes[i][0].replace(hour=17, minute=0):#If the first event's end time is after 5pm
+                correctedTime = unionizedTimes[i][0].replace(hour=17, minute=0)#Change end time to 5pm
                 beforeFirstEvent = (startTime, correctedTime)
             else:
-                if startTime != busyTimes[i][0]:
-                    beforeFirstEvent = (startTime, busyTimes[i][0])
+                if startTime != unionizedTimes[i][0]:
+                    beforeFirstEvent = (startTime, unionizedTimes[i][0])
                 else:
                     beforeFirstEvent = "First Event is 9am"
             if beforeFirstEvent != "First Event is 9am":
                 freeTimes.append(beforeFirstEvent)
-        elif (i > 0) and (i < (len(busyTimes)-1)):#If its the first or last time in the loop
-            if busyTimes[i-1][1].hour == 9:#if the starttime is 9am
-                withOrWithoutAddedTime = busyTimes[i-1][1] #leave as is
+        elif (i > 0) and (i < (len(unionizedTimes)-1)):#If its the first or last time in the loop
+            if unionizedTimes[i-1][1].hour == 9:#if the starttime is 9am
+                withOrWithoutAddedTime = unionizedTimes[i-1][1] #leave as is
             else:#If not, this means the start time is the end of a busy time. 
-                withOrWithoutAddedTime = busyTimes[i-1][1].replace(minutes=+15)#So we need to add 15 minutes to the start time
-            freeTime = (withOrWithoutAddedTime, busyTimes[i][0])
+                withOrWithoutAddedTime = unionizedTimes[i-1][1].replace(minutes=+15)#So we need to add 15 minutes to the start time
+            freeTime = (withOrWithoutAddedTime, unionizedTimes[i][0])
             freeTimes.append(freeTime)
         else:
             endTime = endTime.replace(hour=17, minute=0)#endtime will by default be midnight, so we change it to 5pm
-            if busyTimes[i-1][1] < busyTimes[i-1][1].replace(hour=9, minute=0):#If the end time of the last busy time ends before 9am
+            if unionizedTimes[i-1][1] < unionizedTimes[i-1][1].replace(hour=9, minute=0):#If the end time of the last busy time ends before 9am
                 correctedTime = unionizedTime[i-1][1].replace(hour=9, minute=0)#Change the end time to 9pm
                 afterLastEvent = (correctedTime, endTime)
             else:#The end time of the last busy time is after 9am
-                afterLastEvent = (busyTimes[i-1][1], endTime)#Therefore we do not need to add time.
+                afterLastEvent = (unionizedTimes[i-1][1], endTime)#Therefore we do not need to add time.
             freeTimes.append(afterLastEvent)
-
-    # print_times(freeTimes)
+    display_free_times(freeTimes)
     return freeTimes
 
 
-
-def combine_overlaps(times):
-    """
-    Combine any times that overlap with the next time (because they're already sorted)
-    """
-    app.logger.debug("Entering combine_overlaps")
-
+def fix_overlaps(times):
     for i in range(len(times)-1):
-      if times[i][0] > times[i+1][1]:
-        if times[i][0] < times[i+1][0]:
-          pair = (times[i][1], times[i+1][0])
-        else:
-          pair = times[i]
-
-        del times[i+1]
-        times[i] = pair
-        i = i-1
+        if i < (len(times)-1):
+            if times[i][1] >= times[i+1][0]:
+                if times[i][1] == times[i+1][0]:
+                    newTuple = (times[i][0], times[i+1][1])
+                if times[i][1] < times[i+1][1]:
+                    newTuple = (times[i][0],times[i+1][1])
+                else:
+                    newTuple = times[i]
+                del times[i+1]
+                times[i] = newTuple
+                i = i-1
     return times
 
 
-def add_nights(times):
-    """
-    Append 5pm - 9am (the next day) as a busy time to the current list
-    """
-    app.logger.debug("Entering add_nights")
-
-    startTime = arrow.get(BEGINDATE)
-    endTime = arrow.get(ENDDATE)
+def addNights(times, startTime, endTime):
     days = arrow.Arrow.span_range('day', startTime, endTime)
     for day in days:
-        busyNightTime = (day[0].replace(hour=17), day[1].replace(days=+1, hour=9, minute=0))
+        busyNightTime = (day[0].replace(hour=17, minute=0), day[1].replace(days=+1, hour=9, minute=0, second=0, microsecond=0))
         times.append(busyNightTime)
     return times 
+
+
+def display_free_times(times):
+    for time in times:
+        start = time[0].format('MM/DD/YYYY h:mm a')
+        end = time[1].format('MM/DD/YYYY h:mm a')
+        try:
+            flask.flash("Free Time: {} - {}".format(start,end)) #Story in flask flash object. Will store in mongo in Project 8
+        except RuntimeError:
+            continue
 
 
 def print_times(times_list):

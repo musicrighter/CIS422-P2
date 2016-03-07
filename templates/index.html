@@ -17,14 +17,41 @@
 <body> 
 	<h1>Meeting Scheduler</h1>
 	<div class="container">
-		<p style="outline-color:white;"> Propose a new meeting or complete an exisiting proposal </p>
-		<form>
-				<input type="text" placeholder="Please enter 4 digit ID" style="height:40px;" size="25%" name="ID">
-		</form>
+    <div class="section">
+  		<p style="outline-color:white;"> Propose a meeting with a new ID or complete an exisiting proposal with your meeting's ID</p>
+  		<div class="idinput">
+  				<input placeholder="4 digit ID" style="height:40px; color:black; font-size:150%" pattern="[0-9]{4}" maxlength="4" size="5%" id="ID">
+          </br><span class="idError" id="idError"></span>
+  		</div>
+    </div>
 	</div>
   <div style="text-align:center; margin:auto;">
-			<button class="button button1 btn-lg" onclick="location.href='/mainpage';">Create new proposal</button>
-			<button class="button button2 btn-lg" onclick="location.href='/finalize';">Open existing proposal</button>
+			<button class="button button1 btn-lg" onclick="create()">Create new proposal</button>
+			<button class="button button2 btn-lg" onclick="finalize()">Open existing proposal</button>
 	</div>
 </body>
 </html>
+
+<script>
+function create() {
+  elem = document.getElementById("ID");
+  if (elem.checkValidity() == true && elem.value != "") {
+      location.href = '/mainpage?ID='+elem.value;
+  }
+  else {
+      document.getElementById("idError").innerHTML = "You must enter a 4 digit id";
+      return false;
+  }
+}
+function finalize() {
+  elem = document.getElementById("ID");
+  if (elem.checkValidity() == true && elem.value != "") {
+      location.href = '/finalize?ID='+elem.value;
+  }
+  else {
+      document.getElementById("idError").innerHTML = "You must enter a 4 digit id";
+      return false;
+  }
+}
+
+</script>

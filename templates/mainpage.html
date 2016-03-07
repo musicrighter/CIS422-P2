@@ -19,12 +19,18 @@
 
 </head>
 
+<div>
+  <nav class="navbar navbar-inverse">
+    <a href="/"><img src="http://ix.cs.uoregon.edu/~djg/logo.png" width="10%"/></a>
+  </nav>
+</div>
+
 <body>
 <div class="container">
 
-
 {% if session.proposer == True %}
   <h2>Date range</h2>
+  <p>1. Pick a date range to propose, the calander widgit will help set ranges.</p>
   <form action="/setrange" method="post">
     <input type="text" name="daterange" size="14"
       {% if session.daterange is defined %}
@@ -49,18 +55,18 @@
          );
       });
     </script>
-
-  <br/><br/><input type="submit" class="btn btn-primary" value="Submit Date" />
+  <br/><br/><br/><p>2. Click "Submit Date" and the application will prompt for calander access.</p>
+  <input type="submit" class="btn btn-primary" value="Submit Date" />
   </form>
 {% endif %}     
 
 <!--Show the calendar list (if we have it).  This will need to be turned into a form 
   from which calendars can be picked. Up to three entries are shown in each row;-->
 
-{% if session.calendars is defined %}
+{% if session.calendars is defined and session.email == False %}
+  <h2>Select desired calanders</h2>
   <div class="row">
     <div class="col-md-4">
-      <h2>Select desired calanders</h2>
     </div>
     <div class="col-md-2">
       <br/><button class="btn btn-success" onclick="select()">Select all</button>
@@ -70,36 +76,34 @@
     </div>
   </div><br/>
 
-<form action="/submit_times" method="post">
-  <div class="row">
-  {% for cal in session.calendars if cal.selected %}
-    <div class="col-md-4">
-      <input type="checkbox" name="calendar" value="{{ cal.summary }}"/>
-      <b>{{ cal.summary }}</b>
+  <form action="/submit_times" method="post">
+    <div class="row" style="text-align:left;">
+    {% for cal in session.calendars if cal.selected %}
+      <div class="col-md-4">
+        <input type="checkbox" name="calendar" value="{{ cal.summary }}"/>
+        <b>{{ cal.summary }}</b>
+      </div>
+      {% if loop.index is divisibleby 3 %}
+        </div> <div class="row" style="text-align:left;">
+          {% endif %}
+    {% endfor %}
     </div>
-    {% if loop.index is divisibleby 3 %}
-      </div> <div class="row">
-        {% endif %}
-  {% endfor %}
-  </div> 
-  <div class="row">
-    <div class="col-md-4">
-        <br/><input type="submit" class="btn btn-primary" value="Submit Times">
-    </div>
-  </div>
-{% endif %}   
-</form>
+    <br/><input type="submit" class="btn btn-primary" value="Submit Times"> 
+  </form>
+{% endif %}  
 
 
 {% if session.email == True and session.participant == False %}
   <div style="text-align:center; margin:auto;">
-    <h2>Your times have been added to the scheduler</h2>
+    <h3>Your meeting has been initiated, click below to send pre-filled emails to your participants</h3>
     <button class="btn btn-primary" onclick="sendMail()">Send Email</button>
+    <br/><br/><p>After the emails have been sent, you can go back to the home page and view the proposal</p>
   </div>
 {% endif %}
 
 {% if session.participant == True and session.running == False %}
-  <h2>Times have been added to the scheduler</h2>
+  <h2>Your times have been added to the scheduler</h2>
+  <br/><br/><p>You may now exit the application or go to the home page and create a meeting for yourself</p>
 {% endif %}
 
 </div>  <!-- container (for bootstrap) -->
@@ -112,9 +116,10 @@
       $('input:checkbox').prop('checked',false);
     }
     function sendMail() {
+      var ID = '{{ID}}';
       var link = "mailto:"
                + "?subject=Meeting Proposal"
-               + "&body=Someone has proposed a meeting. Click the link to respond with your own availability: ix.cs.uoregon.edu:5678/email";
+               + "&body=Someone has proposed a meeting. Click the link to respond with your own availability: ix.cs.uoregon.edu:5678/email?ID=" + ID;
       window.location.href = link;
     }
 </script>
