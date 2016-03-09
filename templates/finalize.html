@@ -7,11 +7,20 @@
 <script type="text/javascript" src="//cdn.jsdelivr.net/jquery/1/jquery.min.js"></script>
 <script type="text/javascript" src="//cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script type="text/javascript" src="/static/js/jquery.js"></script>
+<script type="text/javascript" src="/static/js/jquery-ui.js"></script>
+<script type="text/javascript" src="/static/js/jQRangeSlider-min.js"></script>
+<script type="text/javascript" src="/static/js/jQAllRangeSliders-min.js"></script>
 
 <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap/latest/css/bootstrap.css"/>
 <link rel="stylesheet" type="text/css" href="/static/js/node_modules/bootstrap-daterangepicker/daterangepicker.css"/>
 <link rel="stylesheet" type="text/css" href="/static/css/busy.css"/>
 <link rel="stylesheet" type="text/css" href="/static/css/pagestyle.css"/>
+<link rel="stylesheet" type="text/css" href="/static/css/iThing.css" />
+ 
+<!-- Include Date Range Picker -->
+<script type="text/javascript" src="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.js"></script>
+<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.css"/>
  
 </head>
 
@@ -24,24 +33,49 @@
 <body>
 <div class="container">
 
-<form action="/findMeeting" method="post">
-  <div class="row">
-    <p>Find all available time intervals shared between the proposer and participants</p>
-    <input type="submit" class="btn btn-primary" style="text-align:center; margin:auto;" value="Find Meeting">
-  </div>
-</form>
 
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <h1>Free times</h1>
-    <form action="">
-    {% for message in messages %}
-      <input type="radio" name="free" value="{{loop.index}}"> {{ message }}<br>
-    {% endfor %}
-    </form>
+<div id="timesdiv">
+
+  <form action="/findMeeting" method="post">
+    <div class="row">
+      <p>Find all available time intervals shared between the proposer and participants</p>
+      <input type="submit" class="btn btn-primary" style="text-align:center; margin:auto;" value="Find Meeting">
+    </div>
+  </form>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <form>
+        <div class="row" style="text-align:left;">
+          {% for message in messages %}
+            <div class="col-md-4">
+              <label>
+                <input type="radio" name="free" checked="checked" value="{{message}}">
+                <span> {{ message }}</span>
+              </label>
+            </div>
+            {% if loop.index is divisibleby 3 %}
+              </div> <div class="row" style="text-align:left;">
+            {% endif %}
+          {% endfor %}
+        </div>
+      </form>
+
+      <input type="submit" class="btn btn-primary" style="text-align:center; margin:auto;" onclick="handleClick()" value="Select Interval">
+
+    </div>
+
+    <div id="finaltime" style="display:none;">
+      <h3>Select the final meeting time range</h3>
+      <p id="finaldate"></p>
+      <div id="slider" style="text-align:center; margin:auto; width:50%"></div></br>
+      <input type="submit" class="btn btn-primary" style="text-align:center; margin:auto;" onclick="finalize()" value="Email finalized range">
+    </div>
+
   {% endif %}
 {% endwith %}
 
+</br>
 <form action="/delete" method="post">
   <div class="row">
     </br><p>Please delete the meeting when finished with the propsal</p>
@@ -50,4 +84,103 @@
 </form>
 
 </div>
+
+<script type="text/javascript" >
+  function handleClick() {
+      $('#timesdiv').toggle();
+      $('#finaltime').toggle();
+      var times = document.forms[1];
+      var txt = "";
+      var i;
+      for (i = 0; i < times.length; i++) {
+          if (times[i].checked) {
+              txt = txt + times[i].value + " ";
+          }
+      }
+
+      var spaces = txt.split(" ");
+
+      var date = spaces[1].split("/");
+      var start = spaces[2].split(":");
+      var startin = spaces[3];
+      var end = spaces[5].split(":");
+      var endin = spaces[6];
+
+      var starthrs = parseInt(start[0]);
+      var startmin = parseInt(start[1]);
+      var endhrs = parseInt(end[0]);
+      var endmin = parseInt(end[1]);
+
+      var day = parseInt(date[0]);
+      var month = parseInt(date[1]);
+      var year = parseInt(date[2]);
+      
+      if (startin == "pm") {
+        starthrs += 12;
+      };
+      if (endin == "pm") {
+        endhrs += 12;
+      };
+
+      $('#finaldate').html("Time range for " + spaces[1]);
+
+      $("#slider").dateRangeSlider({
+        bounds: {
+          min: new Date(year, month, day, starthrs, startmin),
+          max: new Date(year, month, day, endhrs, endmin)
+        },
+        defaultValues: {
+          min: new Date(year, month, day, starthrs, startmin),
+          max: new Date(year, month, day, endhrs, endmin)
+        },
+        formatter:function(val){
+          var hours = val.getHours(), minutes = val.getMinutes();
+
+          var ampm = hours >= 12 ? 'pm' : 'am';
+          hours = hours % 12;
+          hours = hours ? hours : 12; // the hour '0' should be '12'
+          minutes = minutes < 10 ? '0'+minutes : minutes;
+          var strTime = hours + ':' + minutes + ' ' + ampm;
+          return strTime;
+        },
+        step:{
+          minutes: 15
+        }
+      });
+  }
+
+  function finalize() {
+    var date = $('#finaldate').html().split(" ")[3];
+    
+    var values = $("#slider").dateRangeSlider("values");
+    var first = values.min;
+    var last = values.max;
+    var starthrs = first.getHours();
+    var endhrs  = last.getHours();
+    var startmin = first.getMinutes();
+    var endmin  = last.getMinutes();
+
+    var ampm = starthrs >= 12 ? 'pm' : 'am';
+    starthrs = starthrs % 12;
+    starthrs = starthrs ? starthrs : 12;
+    startmin = startmin < 10 ? '0'+startmin : startmin;
+    var startTime = starthrs + ':' + startmin + ' ' + ampm;
+
+    var ampm = endhrs >= 12 ? 'pm' : 'am';
+    endhrs = endhrs % 12;
+    endhrs = endhrs ? endhrs : 12;
+    endmin = endmin < 10 ? '0'+endmin : endmin;
+    var endTime = endhrs + ':' + endmin + ' ' + ampm;
+
+    var timestr = startTime + " - " + endTime;
+    
+    var link = "mailto:"
+             + "?subject=Finalized Meeting Time"
+             + "&body=The meeting has been finalized. The selected time is " + date  + " " + timestr;
+    window.location.href = link;
+    $('#finaltime').toggle();
+  }
+</script>
+
+
 </body> </html>

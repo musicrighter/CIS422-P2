@@ -10,6 +10,33 @@ p 	 {
 		font-size: 120%;
 }
 
+label input[type="radio"] {
+  display: none;
+}
+label input[type="radio"] ~ span {
+  position: relative;
+  display: inline-block;
+  padding: 3px 0 3px 25px;
+}
+label input[type="radio"] ~ span:before {
+  content: "";
+  position: absolute;
+  display: block;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  margin-right: 5px;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  transition: all 300ms ease-in-out;
+}
+label input[type="radio"]:checked ~ span:before {
+  border: 5px solid #29d;
+}
+
 .navbar {
 		padding: 1%;
 		padding-top: 1%;
@@ -25,4 +52,3 @@ p 	 {
 		border-radius: 5%;
 		text-align: center;
 }
-

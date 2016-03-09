@@ -379,7 +379,7 @@ def local_date(date):
 def format_date(date):
     """Convert date to ddd MM/DD/YYYY"""
     try:
-      as_arrow = arrow.get(date).format('ddd MM/DD/YYYY HH:mm')
+      as_arrow = arrow.get(date).format('ddd MM/DD/YYYY h:mm a')
     except:
         flask.flash("Date '{}' didn't fit expected format")
         raise
@@ -489,7 +489,7 @@ def free_times(busyTimes, startTime, endTime):
             else:#The end time of the last busy time is after 9am
                 afterLastEvent = (unionizedTimes[i-1][1], endTime)#Therefore we do not need to add time.
             freeTimes.append(afterLastEvent)
-    display_free_times(freeTimes)
+    print_times(freeTimes)
     return freeTimes
 
 
@@ -522,14 +522,14 @@ def display_free_times(times):
         start = time[0].format('MM/DD/YYYY h:mm a')
         end = time[1].format('MM/DD/YYYY h:mm a')
         try:
-            flask.flash("Free Time: {} - {}".format(start,end)) #Story in flask flash object. Will store in mongo in Project 8
+            flask.flash("Free Time: {} - {}".format(start,end))
         except RuntimeError:
             continue
 
 
 def print_times(times_list):
     """
-    Prints the times given by a list in an arrow "ddd MM/DD/YYYY HH:mm" format to the mainpage page.
+    Prints the times given by a list in an arrow "ddd MM/DD/YYYY h:mm a" format to the mainpage page.
     """
     app.logger.debug("Entering print_times")
 
@@ -538,7 +538,7 @@ def print_times(times_list):
         finalEndTime = format_date(time[1])
 
         if arrow.get(time[0]).date() == arrow.get(time[1]).date():
-          flask.flash("{} - {}".format(finalBeginTime, arrow.get(time[1]).format("HH:mm")))
+          flask.flash("{} - {}".format(finalBeginTime, arrow.get(time[1]).format("h:mm a")))
 
         else:
           flask.flash("{} - {}".format(finalBeginTime, finalEndTime))

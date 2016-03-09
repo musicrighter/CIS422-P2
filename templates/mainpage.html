@@ -51,7 +51,10 @@
                           moment().add(7, 'days').endOf('week')],
              'This month':[moment(), moment().endOf('month')],
              'Within two weeks':[moment(),moment().add(15, 'days')]
-          }}
+             },
+             "minDate": new Date(),
+             "opens": "center"
+          }
          );
       });
     </script>
@@ -119,7 +122,7 @@
       var ID = '{{ID}}';
       var link = "mailto:"
                + "?subject=Meeting Proposal"
-               + "&body=Someone has proposed a meeting. Click the link to respond with your own availability: ix.cs.uoregon.edu:5678/email?ID=" + ID;
+               + "&body=A meeting has been proposed. Click the link to respond with your own availability: ix.cs.uoregon.edu:5678/email?ID=" + ID;
       window.location.href = link;
     }
 </script>
