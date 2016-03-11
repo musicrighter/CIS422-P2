@@ -483,7 +483,6 @@ def free_times(busyTimes, startTime, endTime):
                 withOrWithoutAddedTime = unionizedTimes[i-1][1]
             else:
                 withOrWithoutAddedTime = unionizedTimes[i-1][1]
-            withOrWithoutAddedTime = unionizedTimes[i-1][1]
             freeTime = (withOrWithoutAddedTime, unionizedTimes[i][0])
             freeTimes.append(freeTime)
         else:
